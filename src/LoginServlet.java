@@ -1,5 +1,6 @@
 package com.adarwin.csc435;
 
+import com.adarwin.logging.Logbook;
 import java.io.IOException;
 import java.io.PrintWriter;
 import javax.servlet.*;
@@ -12,17 +13,63 @@ import java.util.Collections;
 @WebServlet("/login")
 public class LoginServlet extends HttpServlet
 {
+  Logbook logbook = new Logbook("../logs/LoginServlet.log");
   @Override
   protected void doGet (HttpServletRequest request,
                      HttpServletResponse response)
               throws ServletException, IOException
   {
+    logbook.log(Logbook.INFO, "Received get request");
+    //Check to see if the user is already logged in
+    response.sendRedirect("/TaskCommander/login.jsp");
+  }
+
+  private boolean authenticateUser(HttpServletRequest request)
+  {
+    String username = request.getParameter("username");
+    String password = request.getParameter("password");
+    return (username.equals("darwin") && password.equals("pass")) || isLoggedInUser(request);
+  }
+
+  static protected boolean isLoggedInUser(HttpServletRequest request)
+  {
     HttpSession session = request.getSession();
-    PrintWriter out = response.getWriter();
-    String htmlOutput = "<html><head></head><body>";
-    htmlOutput += "<h1>" + Math.random() + "</h1>";
-    htmlOutput += "</body></html>";
-    out.println(htmlOutput);
+    Cookie[] existingCookies = request.getCookies();
+    boolean validUsername = false;
+    boolean validPassword = false;
+    if (existingCookies != null)
+    {
+      for (Cookie cookie : existingCookies)
+      {
+        if (cookie.getName().equals("username") && cookie.getValue().equals("darwin"))
+        {
+          validUsername = true;
+        }
+        else if (cookie.getName().equals("password") && cookie.getValue().equals("pass"))
+        {
+          validPassword = true;
+        }
+      }
+    }
+    return validUsername && validPassword;
+  }
+
+  private void updateCookies(HttpServletRequest request, HttpServletResponse response)
+  {
+    Cookie[] existingCookies = request.getCookies();
+    for (Cookie cookie : existingCookies)
+    {
+      if (cookie.getName().equals("username"))
+      {
+        cookie.setValue(request.getParameter("username"));
+        response.addCookie(cookie);
+      }
+      else if (cookie.getName().equals("password"))
+      {
+        cookie.setValue(request.getParameter("password"));
+        response.addCookie(cookie);
+      }
+    }
   }
 
   @Override
@@ -30,64 +77,47 @@ public class LoginServlet extends HttpServlet
                       HttpServletResponse response)
               throws ServletException, IOException
   {
-    HttpSession session = request.getSession();
-    PrintWriter out = response.getWriter();
-    String htmlOutput = "<html><head></head><body>";
-    htmlOutput += "<h1>Got Post Request</h1>";
-    htmlOutput += "<p>getAuthType() = " + request.getAuthType() + "</p>";
-    htmlOutput += "<p>getContextPath() = " + request.getContextPath() + "</p>";
-    //htmlOutput += "<p>getDateHeader() = " + request.getDateHeader() + "</p>";
-    //htmlOutput += "<p>getHeader() = " + request.getHeader() + "</p>";
-    htmlOutput += "<p>getMethod() = " + request.getMethod() + "</p>";
-    htmlOutput += "<p>getPathInfo() = " + request.getPathInfo() + "</p>";
-    htmlOutput += "<p>getPathTranslated() = " + request.getPathTranslated() + "</p>";
-    htmlOutput += "<p>getQueryString() = " + request.getQueryString() + "</p>";
-    htmlOutput += "<p>getRemoteUser() = " + request.getRemoteUser() + "</p>";
-    htmlOutput += "<p>getRequestedSessionId() = " + request.getRequestedSessionId() + "</p>";
-    htmlOutput += "<p>getRequestURI() = " + request.getRequestURI() + "</p>";
-    htmlOutput += "<p>getServletPath() = " + request.getServletPath() + "</p>";
-    htmlOutput += "<p>getParameter() = " + request.getParameter("username") + "</p>";
-    htmlOutput += "<h2>getHeaderNames()</h2>";
-    List<String> names = Collections.list(request.getHeaderNames());
-    htmlOutput += "<ul>";
-    for (String name : names)
+    if (true)//authenticateUser(request))
     {
-      htmlOutput += "<li>" + name + "</li>";
-      try
+      //Check against database
+      if (true)
       {
-      htmlOutput += "<ul><li>" + request.getDateHeader(name) + ": " + request.getHeader(name) + "</li>";
+        HttpSession session = request.getSession();
+        updateCookies(request, response);
+        session.setAttribute("username", request.getParameter("username"));
+        session.setAttribute("password", request.getParameter("password"));
+        response.sendRedirect("/TaskCommander/home.html");
+        /*
+        RequestDispatcher dispatcher = request.getRequestDispatcher("/home.jsp");
+        dispatcher.forward(request, response);
+        */
+        /*
+        String htmlOutput = "<html><head></head><body>";
+        htmlOutput += "<p>session.getAttribute(\"username\") = " + session.getAttribute("username") + "</p>";
+        htmlOutput += "</body></html>";
+        PrintWriter out = response.getWriter();
+        out.println(htmlOutput);
+        */
+        /*
+        htmlOutput += "<h1>Welcome, " + username + "</h1>";
+        htmlOutput += "<p>Username = " + username + "</p>";
+        htmlOutput += "<p>Password = " + password + "</p>";
+        */
       }
-      catch (IllegalArgumentException ex)
+      else
       {
-      htmlOutput += "<ul><li>" + request.getHeader(name) + "</li></ul>";
+        String htmlOutput = "<html><head></head><body>";
+        htmlOutput += "<h2>Invalid login credentials</h2>";
+        htmlOutput += "</body></html>";
+        PrintWriter out = response.getWriter();
+        out.println(htmlOutput);
       }
-      //htmlOutput += "<li>int version: " + request.getIntHeader(name) + "</li></ul>";
     }
-    htmlOutput += "</ul>";
-    htmlOutput += "<h1>And now for the session methods</h1>";
-    htmlOutput += "<p>getCreationTime() = " + session.getCreationTime() + "</p>";
-    htmlOutput += "<p>getId() = " + session.getId() + "</p>";
-    htmlOutput += "<p>getLastAccessedTime() = " + session.getLastAccessedTime() + "</p>";
-    htmlOutput += "<h2>getAttributeNames()</h2>";
-    names = Collections.list(session.getAttributeNames());
-    htmlOutput += "<ul>";
-    for (String name : names)
-    {
-      htmlOutput += "<li>" + name + "</li>";
-      /*
-      try
-      {
-      htmlOutput += "<ul><li>" + session.getDateHeader(name) + ": " + request.getHeader(name) + "</li>";
-      }
-      catch (IllegalArgumentException ex)
-      {
-      htmlOutput += "<ul><li>" + request.getHeader(name) + "</li></ul>";
-      }
-      */
-      //htmlOutput += "<li>int version: " + request.getIntHeader(name) + "</li></ul>";
-    }
-    htmlOutput += "</ul>";
-    htmlOutput += "</body></html>";
-    out.println(htmlOutput);
+  }
+
+  private boolean isValidUser(String username, String password)
+  {
+    //Check users database
+    return true;
   }
 }
